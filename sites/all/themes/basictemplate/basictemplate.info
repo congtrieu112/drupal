@@ -1,0 +1,22 @@
+name = basictemplate
+description = basic template
+core = 7.x
+engine = phptemplate
+stylesheets[all][] = css/reset.css
+stylesheets[all][] = css/style.css
+scripts[] = js/jquery-2.1.1.js 
+scripts[] = js/jquery.mobile.custom.min.js
+scripts[] = js/main.js
+scripts[] = js/modernizr.js
+
+regions[header] = Header
+regions[sidebar_left] = Sidebar Left
+regions[content] = Content
+regions[footer] = Footer
+
+
+; Information added by drupal.org packaging script on 2013-09-30
+version = "7.x-2.x-dev"
+core = "7.x"
+project = "faq"
+datestamp = "11380553838"

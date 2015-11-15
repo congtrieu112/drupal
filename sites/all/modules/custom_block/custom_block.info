@@ -1,0 +1,5 @@
+name = custom block
+description = custom block module
+package = block custom
+version = 1.0
+core = 7.x

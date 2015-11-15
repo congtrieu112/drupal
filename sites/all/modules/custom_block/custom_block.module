@@ -1,0 +1,83 @@
+<?php
+/*
+ * emplement hook_block_info()
+ */
+function custom_block_block_info(){
+    $blocks = array();
+    $blocks['block_header'] = array(
+      'info'=> t('Block header'),
+      'status'=> true,
+      'region'=>'sidebar_first'
+    );
+    $blocks['block_sidebar'] = array(
+      'info'=>t('Block sidebar'),
+      'status'=>true,
+      'region'=> 'sidebar_first'
+    );
+    $blocks['block_content'] = array(
+      'info'=>  t('Block content'),
+      'status'=>true,
+      'region'=>'sidebar_first'
+    );
+
+
+    return $blocks;
+}
+
+/*
+ * emplement hook_block_view()
+ * 
+ */
+function custom_block_block_view($delta=''){
+    $blocks = array();
+    switch ($delta){
+        case "block_header":
+            $blocks['content']= theme('block_header',array());
+            break;
+        case "block_sidebar":
+            $infoqa = taxonomy_vocabulary_machine_name('viewlist');
+            $blocks['content'] = theme('block_sidebar',array('inforqa'=>$infoqa));
+            break;
+        case "block_content":
+            $blocks['content']= theme('block_content',array());
+            break;
+        default:
+            break;
+            
+    }
+    return $blocks;
+}
+function taxonomy_vocabulary_machine_name($type){
+    $vocabulary = taxonomy_vocabulary_machine_name_load($type);
+    $terms = taxonomy_get_tree($vocabulary->vid);
+
+  return $terms;
+}
+
+/*
+ * emplement hook_theme()
+ * 
+ */
+function custom_block_theme($existing, $type, $theme, $path){
+   $theme_hook['block_header'] = array(
+     'template'=>'templates/header',
+     'render element' => 'element',
+     'path'=> drupal_get_path('module', 'custom_block'),
+     'veriables'=> array('data'=>NULL)
+   );
+   $theme_hook['block_sidebar'] = array(
+     'template'=>'templates/homepage/left-sidebar',
+     'render element'=>'element',
+     'path'=> drupal_get_path('module', 'custom_block'),
+     'veriables'=>array('data'=>NULL)
+   );
+   $theme_hook['block_content'] =array(
+     'template'=>'templates/homepage/content-info',
+     'render element'=>'element',
+     'path'=>  drupal_get_path('module', 'custom_block'),
+     'veriables'=>array('data'=>NULL)
+   );
+   return $theme_hook;
+   
+}
+

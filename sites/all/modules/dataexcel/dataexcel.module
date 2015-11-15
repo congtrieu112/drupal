@@ -1,0 +1,324 @@
+<?php
+
+//define('PHPEXCEL_SUCCESS', 10);
+/*
+ * batch api drupal
+ * export data with excel 
+ * 
+ */
+
+/**
+ * Implement hook_menu()
+ */
+function dataexcel_menu() {
+  $item['admin/content/excel'] = array(
+    'title' => t('excel'),
+    'description' => 'Import content from a <abbr title="Comma Separated Values">CSV</abbr> or <abbr title="Tab Separated Values">TSV</abbr> file.',
+    'access arguments' => array('administer site configuration'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('dataexcel_form'),
+  );
+  $item['admin/content/addcontent'] = array(
+    'title' => t('add content auto'),
+    'description' => 'Import content from a <abbr title="Comma Separated Values">CSV</abbr> or <abbr title="Tab Separated Values">TSV</abbr> file.',
+    'access arguments' => array('administer site configuration'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('add_content_form'),
+  );
+  return $item;
+}
+
+/**
+ * Build a form to upload Excel to.
+ */
+function dataexcel_form() {
+//    $form['#attributes'] = array(
+//      'enctype' => 'multipart/form-data'
+//    );
+//    $form['csvfile'] = array(
+//      '#title' => t('CSV File'),
+//      '#type' => 'file',
+//      '#description' => ($max_size = parse_size(ini_get('upload_max_filesize'))) ? t('Due to server restrictions, the <strong>maximum upload file size is !max_size</strong>. Files that exceed this size will be disregarded.', array('!max_size' => format_size($max_size))) : '',
+//        );
+  $form['contentype'] = array(
+    '#title' => t('select note type'),
+    '#type' => 'select',
+    '#options' => array('Article' => 'Article'),
+    '#description' => t('select  note type')
+  );
+
+  $form['number'] = array(
+    '#title' => 'Number record',
+    '#type' => 'textfield',
+    '#requited' => true,
+    '#default_value' => 10,
+    '#description' => t('Enter the number of data you want to create.'),
+    '#element_validate' => array('element_validate_number')
+  );
+
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Commence Export'),
+  );
+//    $form['#validate'] = array(
+//      'csvimport_validate_fileupload',
+//      'csvimport_form_validate',
+//        );
+
+  if (isset($_SESSION['messages']['status'][0]) && $_SESSION['messages']['status'][0] != "") {
+
+
+
+    $url = $GLOBALS['base_url'] . '/' . drupal_get_path('module', 'dataexcel') . '/dataexcel.xlsx';
+
+    echo '<script type="text/javascript">   window.open("' . $url . '", "_parent"); </script>';
+    echo '<script type="text/javascript">   location.reload(); </script>';
+  }
+
+  return $form;
+}
+
+function add_content_form() {
+
+
+  $form['content'] = array(
+    '#title' => 'Number record',
+    '#type' => 'textfield',
+    '#requited' => true,
+    '#default_value' => 100,
+    '#description' => t('Enter the number of data you want to create.'),
+    '#element_validate' => array('element_validate_number')
+  );
+
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Commence add content'),
+  );
+  return $form;
+}
+
+function dataexcel_form_validate($form, &$form_state) {
+
+//  exit('validate');
+}
+
+function dataexcel_create_excel($start, $end) {
+  //include PHPExcel library
+  require_once "sites/all/libraries/PHPExcel/PHPExcel.php";
+
+//load Excel template file
+  $template = str_replace('.module', '.xlsx', __FILE__);
+  $objTpl = PHPExcel_IOFactory::load($template);
+  $objTpl->setActiveSheetIndex(0);  //set first sheet as active
+//get all data of table
+
+  $datas = getnumbertype($start, $end);
+
+
+  $count = 0;
+
+  // fields of table
+  $fields = array(
+    '0' => 'vid',
+    '1' => 'body_value',
+  );
+
+
+  $count = $start;
+
+
+  foreach ($datas as $data) {
+    $col = 0;
+
+
+
+    foreach ($fields as $field) {
+      $var = $count - 2;
+      if ($count == 0) {
+        $var = 0;
+      }
+      $str = $data->$field;
+      if ($count == 0) {
+        $count = $count + 2;
+      }
+
+
+      $objTpl
+          ->getActiveSheet()
+          ->setCellValueByColumnAndRow($col, $count, $str);
+      $col++;
+    }
+    $count++;
+  }
+
+  // Save Excel 2007 file
+
+  $objWriter = new PHPExcel_Writer_Excel2007($objTpl);
+  $objWriter->save(str_replace('.module', '.xlsx', __FILE__));
+}
+
+function getnumbertype($start, $end) {
+
+
+//  $nodetype = node_load_multiple(array(), array('type' => 'article'));
+//  $arr = $option = array();
+//  foreach ($nodetype as $key => $value) {
+//
+//    $arr['id'][] = $value->vid;
+//    $arr['data'][] = $value->body['und'][0]['value'];
+//  }
+//    if ($end <= count($arr['id'])) {
+//  for ($s = $start; $s <= $end; $s++) {
+//    if ($s < count($arr['id'])) {
+//      $option['id'][] = $arr['id'][$s];
+//      $option['data'][] = $arr['data'][$s];
+//    }
+//  }
+//    }
+//  $query = db_select('node', 'n');
+//  $query->range($start,$end);
+//  $result = $query->execute();
+  $query = db_select('node', 'n');
+  $query->join('field_data_body', 'b', 'n.vid = b.entity_id'); //JOIN node with users
+  $query->fields('n', array('vid'));
+  $query->fields('b', array('body_value'));
+  $query->condition('type', 'article', '=');
+  $query->range($start, $end); //LIMIT to 2 records
+  $result = $query->execute()->fetchAll();
+  if (!empty($result)) {
+    return $result;
+  }
+  return NULL;
+}
+
+function batch_demo_finished_batch_excel($success, $results, $operations) {
+//    header("location:".drupal_get_path('module', 'dataexcel').'/dataexcel.xlsx');
+  // The 'success' parameter means no fatal PHP errors were detected. All
+  // other error management should be handled using 'results'.
+  if ($success) {
+    $message = t('export sucessfull');
+  }
+  else {
+    $message = t('Finished with an error.');
+  }
+  drupal_set_message($message);
+  // Providing data for the redirected page is done through $_SESSION.
+}
+
+function batch_finished_add_content($success, $results, $operations) {
+  if ($success) {
+    $message = t('add content sucessfull');
+  }
+  else {
+    $message = t('Finished with an error.');
+  }
+  drupal_set_message($message);
+}
+
+function dataexcel_form_submit($form, &$form_state) {
+  batch_set(array(
+    'title' => t('Batch API excel'),
+    'operations' => array(
+      array('dataexcel_demo_batch', array(t('complate'), $form_state['values']['number'])),
+    ),
+    'finished' => 'batch_demo_finished_batch_excel',
+  ));
+  batch_process('admin/content/excel');
+}
+
+function add_content_form_submit($form, &$form_state) {
+  batch_set(array(
+    'title' => t('Batch API add content'),
+    'operations' => array(
+      array('proccess_add_content', array(t('complate'), $form_state['values']['content'])),
+    ),
+    'finished' => 'batch_finished_add_content',
+  ));
+  batch_process('admin/content/addcontent');
+}
+
+function proccess_add_content($title, $qty, &$context) {
+  $limit = 10;
+  $time = 0;
+//  $process = ceil($qty / $limit);
+
+  if (empty($context['sandbox'])) {
+    $context['sandbox']['progress'] = 0;
+    $context['sandbox']['max'] = $qty;
+  }
+
+  for ($i = 0; $i < $limit; $i++) {
+    if ($context['sandbox']['progress'] < $context['sandbox']['max']) {
+      // insert Batch_Test
+      create_node_type();
+
+      $context['sandbox']['progress'] ++; // Used to keep track of how many nodes we've already created.
+      $context['message'] = "Created node " . $context ['sandbox']['progress'] . " of " . $context['sandbox']['max'];
+    }
+  }
+  // Check if the batch is finished
+  if ($context['sandbox']['progress'] < $context['sandbox'] ['max']) {
+    $context['finished'] = $context['sandbox']['progress'] / $context['sandbox']['max'];
+    $context['results']['failed_rows'][] = $context['finished'];
+  }
+}
+
+function dataexcel_demo_batch($title, $qty, &$context) {
+  $limit = 10;
+  $time = 0;
+  $process = ceil($qty / $limit);
+
+  if (empty($context['sandbox'])) {
+    $context['sandbox']['progress'] = 0;
+    $context['sandbox']['max'] = $process;
+  }
+
+//  for($i = $time; $i < $time+$limit; $i++){
+  if ($context['sandbox']['progress'] < $context['sandbox']['max']) {
+    // insert Batch_Test
+    dataexcel_create_excel($context['sandbox']['progress'] * $limit, ($context['sandbox']['progress'] + 1) * $limit);
+
+    $context['sandbox']['progress'] ++; // Used to keep track of how many nodes we've already created.
+    $context['message'] = "Created node " . $context ['sandbox']['progress'] . " of " . $context['sandbox']['max'];
+  }
+//  }
+  // Check if the batch is finished
+  if ($context['sandbox']['progress'] < $context['sandbox'] ['max']) {
+    $context['finished'] = $context['sandbox']['progress'] / $context['sandbox']['max'];
+    $context['results']['failed_rows'][] = $context['finished'];
+  }
+}
+
+function create_node_type() {
+  //khoi tao
+  ini_set('display_errors', '1');
+  ini_set('memory_limit', '512M');
+
+  include_once './includes/bootstrap.inc';
+  drupal_bootstrap(DRUPAL_BOOTSTRAP_FULL);
+  module_load_include('inc', 'node', 'node.pages');
+
+  $node = new stdClass();
+//print_r($node);
+
+  $title = "test post"; // html_entity_decode($_POST['title']); //tiêu đề
+  $summary = "summarry"; //$_POST['summary'];      //mô tả
+  $body = "noi dung test ne"; // $_POST['body'];  //nội dung
+
+  $node->uid = '1'; //tác giả
+  $node->type = 'article';    //content type
+  $node->created = time() - (rand(1, 240) * 60); //thời gian post
+  $node->title = $title;
+  $node->status = 1;
+  $node->promote = 0;
+  $node->sticky = 0;
+  $node->language = 'und';
+  $node->body['und'][0]['value'] = $body;
+  $node->body['und'][0]['summary'] = $summary;
+  $node->body[$node->language][0]['format'] = 'full_html';
+
+
+
+  node_submit($node);
+  node_save($node);
+}
